@@ -71,9 +71,9 @@ ENV OLLAMA_BASE_URL="/ollama" \
     OPENAI_API_BASE_URL="https://openrouter.ai/api/v1"
 
 ## API Key and Security Config ##
-ENV OPENAI_API_KEY="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" \
-    WEBUI_SECRET_KEY="" \
-    SCARF_NO_ANALYTICS=true \
+# ENV OPENAI_API_KEY="" \
+#     WEBUI_SECRET_KEY="" \
+ENV SCARF_NO_ANALYTICS=true \
     DO_NOT_TRACK=true \
     ANONYMIZED_TELEMETRY=false
 
