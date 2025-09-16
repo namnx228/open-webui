@@ -27,7 +27,7 @@ FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
 
 # Set Node.js options (heap limit Allocation failed - JavaScript heap out of memory)
-# ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 WORKDIR /app
 
@@ -68,10 +68,10 @@ ENV ENV=prod \
 
 ## Basis URL Config ##
 ENV OLLAMA_BASE_URL="/ollama" \
-    OPENAI_API_BASE_URL=""
+    OPENAI_API_BASE_URL="https://openrouter.ai/api/v1"
 
 ## API Key and Security Config ##
-ENV OPENAI_API_KEY="" \
+ENV OPENAI_API_KEY="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" \
     WEBUI_SECRET_KEY="" \
     SCARF_NO_ANALYTICS=true \
     DO_NOT_TRACK=true \
@@ -93,6 +93,8 @@ ENV TIKTOKEN_ENCODING_NAME="cl100k_base" \
 
 ## Hugging Face download cache ##
 ENV HF_HOME="/app/backend/data/cache/embedding/models"
+
+ENV HF_HUB_OFFLINE=1
 
 ## Torch Extensions ##
 # ENV TORCH_EXTENSIONS_DIR="/.cache/torch_extensions"

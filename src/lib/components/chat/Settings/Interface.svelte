@@ -85,6 +85,7 @@
 
 	let showEmojiInCall = false;
 	let voiceInterruption = false;
+	let voiceBackend = 'classic';
 	let hapticFeedback = false;
 
 	let webSearch = null;
@@ -192,6 +193,7 @@
 
 		showEmojiInCall = $settings?.showEmojiInCall ?? false;
 		voiceInterruption = $settings?.voiceInterruption ?? false;
+		voiceBackend = $settings?.voiceBackend ?? 'classic';
 
 		displayMultiModelResponsesInTabs = $settings?.displayMultiModelResponsesInTabs ?? false;
 		chatFadeStreamingText = $settings?.chatFadeStreamingText ?? true;
@@ -1107,6 +1109,27 @@
 			</div>
 
 			<div class=" my-2 text-sm font-medium">{$i18n.t('Voice')}</div>
+
+			<div>
+				<div class=" py-0.5 flex w-full justify-between">
+					<div class=" self-center text-xs" id="voice-backend-label">
+						{$i18n.t('Voice Backend')}
+					</div>
+
+					<div class="flex items-center gap-2 p-1">
+						<select
+							class="w-fit py-1.5 rounded text-xs bg-transparent outline-none"
+							bind:value={voiceBackend}
+							on:change={() => {
+								saveSettings({ voiceBackend });
+							}}
+						>
+							<option value="classic">{$i18n.t('Classic (STT/TTS)')}</option>
+							<option value="voicemode">{$i18n.t('VoiceMode (LiveKit)')}</option>
+						</select>
+					</div>
+				</div>
+			</div>
 
 			<div>
 				<div class=" py-0.5 flex w-full justify-between">

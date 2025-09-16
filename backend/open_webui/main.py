@@ -87,6 +87,7 @@ from open_webui.routers import (
     users,
     utils,
     scim,
+    voicemode,
 )
 
 from open_webui.routers.retrieval import (
@@ -441,6 +442,8 @@ from open_webui.env import (
     ENABLE_OTEL,
     EXTERNAL_PWA_MANIFEST_URL,
     AIOHTTP_CLIENT_SESSION_SSL,
+    VOICEMODE_ENABLED,
+    LIVEKIT_URL,
 )
 
 
@@ -1261,6 +1264,9 @@ app.include_router(
 )
 app.include_router(utils.router, prefix="/api/v1/utils", tags=["utils"])
 
+# VoiceMode API for LiveKit token handling
+app.include_router(voicemode.router, prefix="/api/v1/voicemode", tags=["voicemode"])
+
 # SCIM 2.0 API for identity management
 if SCIM_ENABLED:
     app.include_router(scim.router, prefix="/api/v1/scim/v2", tags=["scim"])
@@ -1760,6 +1766,10 @@ async def get_app_config(request: Request):
                     "stt": {
                         "engine": app.state.config.STT_ENGINE,
                     },
+                },
+                "voicemode": {
+                    "enabled": VOICEMODE_ENABLED,
+                    "livekit_url": LIVEKIT_URL,
                 },
                 "file": {
                     "max_size": app.state.config.FILE_MAX_SIZE,

@@ -108,6 +108,7 @@
 		"katex": "^0.16.22",
 		"kokoro-js": "^1.1.1",
 		"leaflet": "^1.9.4",
+		"livekit-client": "^2.8.3",
 		"lowlight": "^3.3.0",
 		"marked": "^9.1.0",
 		"mermaid": "^11.10.1",

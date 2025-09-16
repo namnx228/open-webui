@@ -1949,6 +1949,15 @@
 																return;
 															}
 
+															// Check if voicemode backend is selected but not enabled
+															if ($settings?.voiceBackend === 'voicemode' && !($config?.voicemode?.enabled)) {
+																toast.error(
+																	$i18n.t('VoiceMode is not enabled. Please check your configuration or switch to Classic voice mode in settings.')
+																);
+
+																return;
+															}
+
 															if ($config.audio.stt.engine === 'web') {
 																toast.error(
 																	$i18n.t('Call feature is not supported when using Web STT engine')

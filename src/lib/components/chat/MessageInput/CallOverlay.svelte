@@ -7,6 +7,7 @@
 	import { blobToFile } from '$lib/utils';
 	import { generateEmoji } from '$lib/apis';
 	import { synthesizeOpenAISpeech, transcribeAudio } from '$lib/apis/audio';
+	import { getLiveKitToken, getVoiceModeConfig } from '$lib/apis/voicemode';
 
 	import { toast } from 'svelte-sonner';
 
@@ -45,6 +46,11 @@
 
 	let videoInputDevices = [];
 	let selectedVideoInputDeviceId = null;
+
+	// LiveKit variables
+	let liveKitRoom = null;
+	let isLiveKitMode = false;
+	let livekitClient = null;
 
 	const getVideoInputDevices = async () => {
 		const devices = await navigator.mediaDevices.enumerateDevices();
@@ -142,6 +148,111 @@
 	const stopCamera = async () => {
 		await stopVideoStream();
 		camera = false;
+	};
+
+	// LiveKit functions
+	const initializeLiveKit = async () => {
+		try {
+			// Check if voicemode is enabled and configured
+			const voiceModeConfig = await getVoiceModeConfig(localStorage.token);
+			if (!voiceModeConfig.enabled) {
+				console.log('VoiceMode not enabled, falling back to classic voice');
+				return false;
+			}
+
+			// Dynamic import of livekit-client
+			livekitClient = await import('livekit-client');
+			const { Room, RoomEvent, Track } = livekitClient;
+
+			// Create room
+			liveKitRoom = new Room({
+				// Audio settings optimized for voice
+				adaptiveStream: true,
+				dynacast: true,
+				audioCaptureDefaults: {
+					echoCancellation: $settings?.voice?.echoCancellation ?? true,
+					noiseSuppression: $settings?.voice?.noiseSuppression ?? true,
+					autoGainControl: $settings?.voice?.autoGainControl ?? true,
+				}
+			});
+
+			// Set up event listeners
+			liveKitRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+				if (track.kind === Track.Kind.Audio) {
+					// Assistant audio track received
+					const audioElement = track.attach();
+					audioElement.play();
+					assistantSpeaking = true;
+				}
+			});
+
+			liveKitRoom.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+				if (track.kind === Track.Kind.Audio) {
+					assistantSpeaking = false;
+				}
+			});
+
+			liveKitRoom.on(RoomEvent.Disconnected, () => {
+				console.log('LiveKit room disconnected');
+				isLiveKitMode = false;
+			});
+
+			// Get token and connect
+			const identity = `user-${Date.now()}`;
+			const room = 'voice-chat';
+
+			const tokenResponse = await getLiveKitToken(localStorage.token, identity, room);
+
+			await liveKitRoom.connect(tokenResponse.url, tokenResponse.token);
+
+			// Enable microphone
+			await liveKitRoom.localParticipant.setMicrophoneEnabled(true);
+
+			console.log('Connected to LiveKit room');
+			isLiveKitMode = true;
+			return true;
+
+		} catch (error) {
+			console.error('Failed to initialize LiveKit:', error);
+			toast.error('Failed to connect to voice mode. Falling back to classic voice.');
+			return false;
+		}
+	};
+
+	const cleanupLiveKit = async () => {
+		if (liveKitRoom) {
+			try {
+				await liveKitRoom.disconnect();
+			} catch (error) {
+				console.error('Error disconnecting from LiveKit:', error);
+			}
+			liveKitRoom = null;
+		}
+		isLiveKitMode = false;
+	};
+
+	const toggleLiveKitMicrophone = async (enabled) => {
+		if (liveKitRoom && isLiveKitMode) {
+			try {
+				await liveKitRoom.localParticipant.setMicrophoneEnabled(enabled);
+			} catch (error) {
+				console.error('Error toggling microphone:', error);
+			}
+		}
+	};
+
+	const interruptLiveKitAudio = async () => {
+		if (liveKitRoom && isLiveKitMode && assistantSpeaking) {
+			// Pause remote audio playback
+			const audioElements = document.querySelectorAll('audio');
+			audioElements.forEach(audio => audio.pause());
+			assistantSpeaking = false;
+
+			// TODO Phase 2: Send data message to agent to interrupt
+			// await liveKitRoom.localParticipant.publishData(
+			//   new TextEncoder().encode(JSON.stringify({ type: 'interrupt' }))
+			// );
+		}
 	};
 
 	const MIN_DECIBELS = -55;
@@ -304,6 +415,13 @@
 					return;
 				}
 
+				// Skip voice activity detection in LiveKit mode
+				if (isLiveKitMode) {
+					// In LiveKit mode, the agent handles voice activity detection
+					requestAnimationFrame(visualizeAudioStream);
+					return;
+				}
+
 				if (assistantSpeaking && !($settings?.voiceInterruption ?? false)) {
 					// Mute the audio if the assistant is speaking
 					analyser.maxDecibels = 0;
@@ -431,6 +549,11 @@
 	const stopAllAudio = async () => {
 		assistantSpeaking = false;
 		interrupted = true;
+
+		// Handle interruption based on voice mode
+		if (isLiveKitMode) {
+			await interruptLiveKitAudio();
+		}
 
 		if (chatStreaming) {
 			stopResponse();
@@ -647,7 +770,19 @@
 
 		model = $models.find((m) => m.id === modelId);
 
-		startRecording();
+		// Branch based on voice backend setting
+		if ($settings?.voiceBackend === 'voicemode' && $config?.voicemode?.enabled) {
+			console.log('Initializing LiveKit voice mode');
+			const liveKitInitialized = await initializeLiveKit();
+
+			if (!liveKitInitialized) {
+				console.log('Falling back to classic voice mode');
+				startRecording();
+			}
+		} else {
+			console.log('Using classic voice mode');
+			startRecording();
+		}
 
 		eventTarget.addEventListener('chat:start', chatStartHandler);
 		eventTarget.addEventListener('chat', chatEventHandler);
@@ -656,7 +791,13 @@
 		return async () => {
 			await stopAllAudio();
 
-			stopAudioStream();
+			// Cleanup LiveKit if in LiveKit mode
+			if (isLiveKitMode) {
+				await cleanupLiveKit();
+			} else {
+				stopAudioStream();
+				await stopRecordingCallback(false);
+			}
 
 			eventTarget.removeEventListener('chat:start', chatStartHandler);
 			eventTarget.removeEventListener('chat', chatEventHandler);
@@ -666,18 +807,23 @@
 			await tick();
 
 			await stopAllAudio();
-
-			await stopRecordingCallback(false);
 			await stopCamera();
 		};
 	});
 
 	onDestroy(async () => {
 		await stopAllAudio();
-		await stopRecordingCallback(false);
+
+		// Cleanup LiveKit if in LiveKit mode
+		if (isLiveKitMode) {
+			await cleanupLiveKit();
+		} else {
+			await stopRecordingCallback(false);
+			await stopAudioStream();
+		}
+
 		await stopCamera();
 
-		await stopAudioStream();
 		eventTarget.removeEventListener('chat:start', chatStartHandler);
 		eventTarget.removeEventListener('chat', chatEventHandler);
 		eventTarget.removeEventListener('chat:finish', chatFinishHandler);

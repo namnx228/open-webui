@@ -803,3 +803,13 @@ PIP_PACKAGE_INDEX_OPTIONS = os.getenv("PIP_PACKAGE_INDEX_OPTIONS", "").split()
 ####################################
 
 EXTERNAL_PWA_MANIFEST_URL = os.environ.get("EXTERNAL_PWA_MANIFEST_URL")
+
+####################################
+# VOICEMODE CONFIGURATION
+####################################
+
+VOICEMODE_ENABLED = os.environ.get("VOICEMODE_ENABLED", "False").lower() == "true"
+VOICEMODE_TOKEN_SERVER_URL = os.environ.get("VOICEMODE_TOKEN_SERVER_URL", "http://localhost:8000/api/livekit/token")
+LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "ws://localhost:7880")
+LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
+LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
