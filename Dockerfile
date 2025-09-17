@@ -169,7 +169,15 @@ COPY --chown=$UID:$GID --from=build /app/package.json /app/package.json
 # copy backend files
 COPY --chown=$UID:$GID ./backend .
 
-EXPOSE 8080
+# Copy SSL certificates if provided
+# Place your SSL certificate files in ./ssl/ directory before building:
+# - ./ssl/cert.pem (SSL certificate)
+# - ./ssl/key.pem (private key)
+# Set environment variables: SSL_CERTFILE=/app/backend/ssl/cert.pem SSL_KEYFILE=/app/backend/ssl/key.pem
+RUN mkdir -p /app/backend/ssl
+COPY --chown=$UID:$GID ssl/ /app/backend/ssl/ 2>/dev/null || echo "No SSL directory found, HTTPS disabled"
+
+EXPOSE 8080 8443
 
 HEALTHCHECK CMD curl --silent --fail http://localhost:${PORT:-8080}/health | jq -ne 'input.status == true' || exit 1
 
