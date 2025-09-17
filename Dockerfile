@@ -175,7 +175,7 @@ COPY --chown=$UID:$GID ./backend .
 # - ./ssl/key.pem (private key)
 # Set environment variables: SSL_CERTFILE=/app/backend/ssl/cert.pem SSL_KEYFILE=/app/backend/ssl/key.pem
 RUN mkdir -p /app/backend/ssl
-COPY --chown=$UID:$GID ssl/ /app/backend/ssl/ 2>/dev/null || echo "No SSL directory found, HTTPS disabled"
+COPY --chown=$UID:$GID ssl/ /app/backend/ssl/
 
 EXPOSE 8080 8443
 
