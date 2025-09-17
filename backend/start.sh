@@ -22,6 +22,8 @@ fi
 
 PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
+SSL_CERTFILE="${SSL_CERTFILE:-}"
+SSL_KEYFILE="${SSL_KEYFILE:-}"
 if test "$WEBUI_SECRET_KEY $WEBUI_JWT_SECRET_KEY" = " "; then
   echo "Loading WEBUI_SECRET_KEY from file, not provided as an environment variable."
 
@@ -71,4 +73,15 @@ fi
 
 PYTHON_CMD=$(command -v python3 || command -v python)
 
-WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec "$PYTHON_CMD" -m uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips '*' --workers "${UVICORN_WORKERS:-1}"
+# Configure SSL options for uvicorn if SSL certificates are provided
+SSL_OPTIONS=""
+if [ -n "$SSL_CERTFILE" ] && [ -n "$SSL_KEYFILE" ]; then
+    echo "SSL certificates found, enabling HTTPS..."
+    SSL_OPTIONS="--ssl-certfile $SSL_CERTFILE --ssl-keyfile $SSL_KEYFILE"
+    echo "Server will be available at https://$HOST:$PORT"
+else
+    echo "No SSL certificates found, running on HTTP..."
+    echo "Server will be available at http://$HOST:$PORT"
+fi
+
+WEBUI_SECRET_KEY="$WEBUI_SECRET_KEY" exec "$PYTHON_CMD" -m uvicorn open_webui.main:app --host "$HOST" --port "$PORT" --forwarded-allow-ips '*' --workers "${UVICORN_WORKERS:-1}" $SSL_OPTIONS

@@ -813,3 +813,10 @@ VOICEMODE_TOKEN_SERVER_URL = os.environ.get("VOICEMODE_TOKEN_SERVER_URL", "http:
 LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "ws://localhost:7880")
 LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
 LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
+
+####################################
+# SSL CONFIGURATION
+####################################
+
+SSL_CERTFILE = os.environ.get("SSL_CERTFILE", "")
+SSL_KEYFILE = os.environ.get("SSL_KEYFILE", "")
